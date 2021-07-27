@@ -20,17 +20,20 @@ import matplotlib.pyplot as plt
 #########################################################
 # ALGORITHM PARAMETERS                                  #
 #########################################################
-N=50                  # Define here the population size
-Genome=4              # Define here the chromosome length
-generation_max= 650   # Define here the maximum number of
-                      # generations/iterations
+N = 50                  # Define here the population size
+Genome = 4              # Define here the chromosome length
+generation_max = 650    # Define here the maximum number of
+                        # generations/iterations
+fitness_maximization = True
+                        # true if you want to maximize fitness
+                        # false if you want to minimize fitness
 
 #########################################################
 # VARIABLES ALGORITHM                                   #
 #########################################################
-popSize=N+1
-genomeLength=Genome+1
-top_bottom=3
+popSize = N+1
+genomeLength = Genome+1
+top_bottom = 3
 QuBitZero = np.array([[1], [0]])
 QuBitOne = np.array([[0], [1]])
 AlphaBeta = np.empty([top_bottom])
@@ -40,16 +43,16 @@ probability = np.empty([popSize])
 qpv = np.empty([popSize, genomeLength, top_bottom])         
 nqpv = np.empty([popSize, genomeLength, top_bottom]) 
 # chromosome: classical chromosome
-chromosome = np.empty([popSize, genomeLength],dtype=np.int) 
+chromosome = np.empty([popSize, genomeLength], dtype=int) 
 child1 = np.empty([popSize, genomeLength, top_bottom]) 
 child2 = np.empty([popSize, genomeLength, top_bottom]) 
-best_chrom = np.empty([generation_max]) 
+best_chrom = np.empty([generation_max], dtype=int) 
 
 # Initialization global variables
-theta=0;
-iteration=0;
-the_best_chrom=0;
-generation=0;
+theta = 0
+iteration = 0
+the_best_chrom = 0
+generation = 0
 
 #########################################################
 # QUANTUM POPULATION INITIALIZATION                     #
@@ -112,6 +115,23 @@ def Measure(p_alpha):
     print()
 
 #########################################################
+# FITNESS COMPARISON                                    #
+#########################################################
+# return true if fitness1 is better then fitness2
+def is_better(fitness1, fitness2):
+    return (fitness_maximization and fitness1 > fitness2) or (not(fitness_maximization) and fitness1 < fitness2)
+
+# return true if fitness1 is better then or equal to fitness2
+def is_better_equal(fitness1, fitness2):
+    return (fitness_maximization and fitness1 >= fitness2) or (not(fitness_maximization) and fitness1 <= fitness2)
+
+def is_worse(fitness1, fitness2):
+    return not(is_better_equal(fitness1, fitness2))
+
+def is_worse_equal(fitness1, fitness2):
+    return not(is_better(fitness1, fitness2))
+
+#########################################################
 # FITNESS EVALUATION                                    # 
 #########################################################
 def Fitness_evaluation(generation):
@@ -152,22 +172,23 @@ def Fitness_evaluation(generation):
         variance=0.0
     # Best chromosome selection
     the_best_chrom=0;
-    fitness_max=fitness[1];
+    fitness_best=fitness[1];
     for i in range(1,popSize):
-        if fitness[i]>=fitness_max:
-            fitness_max=fitness[i]
+        if is_better_equal(fitness[i], fitness_best):
+            fitness_best=fitness[i]
             the_best_chrom=i
     best_chrom[generation]=the_best_chrom
     # Statistical output                                   
     f = open("output.dat", "a")
-    f.write(str(generation)+" "+str(fitness_average)+"\n")
-    f.write(" \n")
+    f.write(str(generation) + " " + str(fitness_average) + "\n")
+    f.write("\n")
     f.close()
     print("Population size = ", popSize - 1)
-    print("mean fitness = ",fitness_average)
-    print("variance = ",variance," Std. deviation = ",math.sqrt(variance))
-    print("fitness max = ",best_chrom[generation])
-    print("fitness sum = ",fitness_total)
+    print("mean fitness = ", fitness_average)
+    print("variance = ", variance, " Std. deviation = ", math.sqrt(variance))
+    print("fitness best = ", fitness_best)
+    print("chromosome best = ", best_chrom[generation])
+    print("fitness sum = ", fitness_total)
 
 #########################################################
 # QUANTUM ROTATION GATE                                 #
@@ -177,7 +198,7 @@ def rotation():
     # Lookup table of the rotation angle
     for i in range(1,popSize):
        for j in range(1,genomeLength):
-           if fitness[i]<fitness[best_chrom[generation]]:
+           if is_worse(fitness[i], fitness[best_chrom[generation]]):
              # if chromosome[i,j]==0 and chromosome[best_chrom[generation],j]==0:
                if chromosome[i,j]==0 and chromosome[best_chrom[generation],j]==1:
                    # Define the rotation angle: delta_theta (e.g. 0.0785398163)
@@ -236,7 +257,7 @@ def select_p_tournament():
     while (u1==0 and u2==0):
         u1=np.random.random_integers(popSize-1)
         u2=np.random.random_integers(popSize-1)
-        if fitness[u1]<=fitness[u2]:
+        if is_better_equal(fitness[u1], fitness[u2]):
             parent=u1
         else:
             parent=u2
